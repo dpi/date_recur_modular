@@ -8,3 +8,20 @@ date_recur_modular_oscar_widget:
     theme:
       css/date-recur-modular-oscar-widget.css: {}
 
+date_recur_modular_sierra_widget:
+  css:
+    theme:
+      css/date-recur-modular-sierra-widget.css: {}
+  js:
+    js/date-recur-modular-sierra-widget.js: {}
+  dependencies:
+    - core/jquery
+    - core/jquery.once
+    - core/drupal
+    - core/drupalSettings
+    - core/drupal.form
+
+date_recur_modular_sierra_widget_modal_form:
+  css:
+    theme:
+      css/date-recur-modular-sierra-widget-modal-form.css: {}
