@@ -1,0 +1,5 @@
+date_recur_modular_alpha_widget:
+  css:
+    theme:
+      css/date-recur-modular-alpha-widget.css: {}
+
