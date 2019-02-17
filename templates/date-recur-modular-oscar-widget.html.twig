@@ -1,0 +1,24 @@
+<div{{ attributes }}>
+  <div class="container-inline parts">
+    <div class="parts--part">{{ widget.mode }}</div>
+    <div class="parts--part parts--daily-count">{{ widget.daily_count }}</div>
+    <div class="parts--part parts--ordinals">{{ widget.ordinals }}</div>
+    <div class="parts--part parts--weekdays">{{ widget.weekdays }}</div>
+  </div>
+  <div class="parts dates">
+    <div class="date parts--part container-inline">{{ widget.day_start }}{{ widget.time_zone }}</div>
+    <div class="date parts--part parts--times">
+      <div class="parts--is-all-day ">{{ widget.is_all_day }}</div>
+      <div class="container-inline">{{ widget.times }}</div>
+    </div>
+  </div>
+  <div class="ends">
+    <div>
+      {{ widget.ends_mode }}
+    </div>
+    <div>
+      {{ widget.ends_count }}
+      {{ widget.ends_date }}
+    </div>
+  </div>
+</div>

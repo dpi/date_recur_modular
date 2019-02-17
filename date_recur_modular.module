@@ -15,6 +15,9 @@ function date_recur_modular_theme(array $existing, string $type, string $theme, 
     'date_recur_modular_alpha_widget' => [
       'render element' => 'widget',
     ],
+    'date_recur_modular_oscar_widget' => [
+      'render element' => 'widget',
+    ],
   ];
 }
 
@@ -26,4 +29,14 @@ function date_recur_modular_theme(array $existing, string $type, string $theme, 
 function date_recur_modular_preprocess_date_recur_modular_alpha_widget(array &$variables): void {
   $variables['attributes']['class'][] = 'date-recur-modular-alpha-widget';
   $variables['#attached']['library'][] = 'date_recur_modular/date_recur_modular_alpha_widget';
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ *
+ * HOOK: 'date_recur_modular_oscar_widget'.
+ */
+function date_recur_modular_preprocess_date_recur_modular_oscar_widget(array &$variables): void {
+  $variables['attributes']['class'][] = 'date-recur-modular-oscar-widget';
+  $variables['#attached']['library'][] = 'date_recur_modular/date_recur_modular_oscar_widget';
 }
