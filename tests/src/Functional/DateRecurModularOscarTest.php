@@ -69,6 +69,23 @@ class DateRecurModularOscarTest extends WebDriverTestBase {
     $this->drupalPostForm($entity->toUrl('edit-form'), $edit, 'Save');
     $this->assertSession()->pageTextContains('End time must be after start time.');
   }
+
+  /**
+   * Tests times fields end not set.
+   */
+  public function testTimesStartNotSet(): void {
+    $entity = DrEntityTest::create();
+    $entity->save();
+
+    $edit = [
+      'dr[0][mode]' => 'weekly',
+      'dr[0][day_start]' => '04/14/2015',
+      'dr[0][times][time_end]' => '09:00:00am',
+      'dr[0][weekdays][MO]' => TRUE,
+    ];
+    $this->drupalPostForm($entity->toUrl('edit-form'), $edit, 'Save');
+    $this->assertSession()->pageTextContains('Invalid start time.');
+  }
   /**
    * Tests all-day toggle visibility.
    */

@@ -324,9 +324,15 @@ class DateRecurModularOscarWidget extends DateRecurModularWidgetBase {
   public static function validateModularWidget(array &$element, FormStateInterface $form_state, array &$complete_form): void {
     /** @var string|null $dayStartString */
     $dayStartString = $form_state->getValue(array_merge($element['#parents'], ['day_start']));
-    if (empty($dayStartString)) {
-      // Skip if empty.
+    $timeStartString = $form_state->getValue(array_merge($element['#parents'], ['times', 'time_start']), '');
+    $timeEndString = $form_state->getValue(array_merge($element['#parents'], ['times', 'time_end']), '');
+    $hasAnyDateTimeInput = !empty($dayStartString) || !empty($timeStartString) || !empty($timeEndString);
+
+    if (!$hasAnyDateTimeInput) {
+      // Skip if all of date and times are empty.
       $form_state->setValueForElement($element['day_start'], NULL);
+      $form_state->setValueForElement($element['times']['time_start'], NULL);
+      $form_state->setValueForElement($element['times']['time_end'], NULL);
       return;
     }
 
@@ -366,7 +372,6 @@ class DateRecurModularOscarWidget extends DateRecurModularWidgetBase {
       };
 
       try {
-        $timeStartString = $form_state->getValue(array_merge($element['#parents'], ['times', 'time_start']), '');
         $timeStartString = $fixTime($timeStartString);
         $startDate = DrupalDateTime::createFromFormat(static::HTML_TIME_FORMAT, $timeStartString, $timeZone);
         $startDate->setDate(...$baseDayParts);
@@ -378,7 +383,6 @@ class DateRecurModularOscarWidget extends DateRecurModularWidgetBase {
       }
 
       try {
-        $timeEndString = $form_state->getValue(array_merge($element['#parents'], ['times', 'time_end']), '');
         $timeEndString = $fixTime($timeEndString);
         $endDate = DrupalDateTime::createFromFormat(static::HTML_TIME_FORMAT, $timeEndString, $timeZone);
         $endDate->setDate(...$baseDayParts);
