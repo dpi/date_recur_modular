@@ -78,6 +78,44 @@ class DateRecurModularOscarWidget extends DateRecurModularWidgetBase {
   /**
    * {@inheritdoc}
    */
+  public static function defaultSettings(): array {
+    return [
+      'all_day_toggle' => TRUE,
+    ] + parent::defaultSettings();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function settingsSummary(): array {
+    $summary = parent::settingsSummary();
+
+    $summary[] = $this->isAllDayToggleEnabled() ?
+      $this->t('All day toggle: enabled') :
+      $this->t('All day toggle: disabled');
+
+    return $summary;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function settingsForm(array $form, FormStateInterface $form_state): array {
+    $elements = parent::settingsForm($form, $form_state);
+
+    $elements['all_day_toggle'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enable all-day toggle'),
+      '#description' => $this->t('Whether to enable the all-day/between toggle.'),
+      '#default_value' => $this->getSetting('all_day_toggle'),
+    ];
+
+    return $elements;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   protected function getModes(): array {
     return [
       static::MODE_ONCE => $this->t('Once'),
@@ -192,6 +230,7 @@ class DateRecurModularOscarWidget extends DateRecurModularWidgetBase {
         static::IS_ALL_DAY_ALL => $this->t('All day'),
         static::IS_ALL_DAY_PARTIAL => $this->t('Between time'),
       ],
+      '#access' => $this->isAllDayToggleEnabled(),
     ];
 
     $element['times'] = [
@@ -532,6 +571,16 @@ class DateRecurModularOscarWidget extends DateRecurModularWidgetBase {
       ],
       '#default_value' => $ordinals,
     ];
+  }
+
+  /**
+   * Whether all day toggle is enabled.
+   *
+   * @return bool
+   *   Whether all day toggle is enabled.
+   */
+  protected function isAllDayToggleEnabled(): bool {
+    return !empty($this->getSetting('all_day_toggle'));
   }
 
 }
