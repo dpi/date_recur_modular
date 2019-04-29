@@ -390,6 +390,10 @@ class DateRecurModularOscarWidget extends DateRecurModularWidgetBase {
       }
     }
 
+    if ($endDate->getPhpDateTime() < $startDate->getPhpDateTime()) {
+      $form_state->setError($element['times']['time_end'], 'End time must be after start time.');
+    }
+
     $form_state->setValueForElement($element['times']['time_start'], $startDate);
     $form_state->setValueForElement($element['times']['time_end'], $endDate);
   }
