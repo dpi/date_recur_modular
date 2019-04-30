@@ -5,3 +5,11 @@ field.widget.settings.date_recur_modular_oscar:
     all_day_toggle:
       type: boolean
       label: 'All day toggle enabled'
+
+field.widget.settings.date_recur_modular_sierra:
+  type: mapping
+  label: 'Sierra widget settings'
+  mapping:
+    interpreter:
+      type: string
+      label: 'Interpreter instance ID'
