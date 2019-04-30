@@ -129,6 +129,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     $element['#element_validate'][] = [static::class, 'validateModularWidget'];
     $element['#after_build'][] = [static::class, 'afterBuildModularWidget'];
     $element['#theme'] = 'date_recur_modular_alpha_widget';
+    $element['#theme_wrappers'][] = 'form_element';
 
     $item = $items[$delta];
 
