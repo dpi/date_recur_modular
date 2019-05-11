@@ -76,6 +76,11 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
   public const COLLECTION_MODAL_STATE_PATH = 'field_and_delta';
 
   /**
+   * Stores field and delta.
+   */
+  public const COLLECTION_MODAL_STATE_DELTA = 'field_unique_delta';
+
+  /**
    * Form state key.
    */
   protected const FORM_STATE_RRULE_KEY = 'date_recur_modular_sierra_rrule';
@@ -255,6 +260,10 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       $startDate = new \DateTime();
     }
 
+    $element['unique_delta'] = [
+      '#type' => 'hidden',
+      '#default_value' => \Drupal::service('uuid')->generate(),
+    ];
     $rrule = $item->rrule ?? '';
     $element['field_path'] = [
       '#type' => 'value',
@@ -268,7 +277,8 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
 
     /** @var string|null $interpretation */
     $interpretation = NULL;
-    $customRrule = $form_state->get([static::FORM_STATE_RRULE_KEY, $element['field_path']['#value']]);
+    $uniqueDelta = NestedArray::getValue($form_state->getUserInput(), array_merge($elementParents, ['unique_delta'])) ?? $element['unique_delta']['#default_value'];
+    $customRrule = static::getRruleValueFromState($uniqueDelta, $form_state);
     if ((!empty($rrule) && $recurrenceOption === 'custom') || !empty($customRrule)) {
       $customRrule = empty($customRrule) ? $rrule : $customRrule;
       $helper = DateRecurHelper::create($customRrule, $startDate);
@@ -437,7 +447,8 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     if (isset($startDate)) {
       $recurrenceOption = $form_state->getValue(array_merge($valueParents, ['recurrence_option']));
       if ($recurrenceOption === 'custom') {
-        $rrule = $form_state->get([static::FORM_STATE_RRULE_KEY, $element['field_path']['#value']]);
+        $uniqueDelta = $form_state->getValue(array_merge($valueParents, ['unique_delta']));
+        $rrule = static::getRruleValueFromState($uniqueDelta, $form_state);
         // There wont be a value in form state if the modal wasn't interacted
         // with, so fall back to value in storage.
         if (!isset($rrule)) {
@@ -521,13 +532,15 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     }
     $startDateStr = $startDate instanceof \DateTime ? $startDate->format(static::COLLECTION_MODAL_STATE_DTSTART_FORMAT) : '';
     $path = $form_state->getValue(array_merge($valueParents, ['field_path']));
-    $rruleState = $form_state->get([static::FORM_STATE_RRULE_KEY, $path]) ?? $form_state->getValue(array_merge($valueParents, ['rrule_in_storage']));
+    $uniqueDelta = $form_state->getValue(array_merge($valueParents, ['unique_delta']));
+    $rruleState = static::getRruleValueFromState($uniqueDelta, $form_state) ?? $form_state->getValue(array_merge($valueParents, ['rrule_in_storage']));
 
     $collection = $this->tempStoreFactory->get(static::COLLECTION_MODAL_STATE);
     $collection->set(static::COLLECTION_MODAL_STATE_KEY, $rruleState);
     $collection->set(static::COLLECTION_MODAL_STATE_REFRESH_BUTTON, $element['buttons']['reload_recurrence_dropdown_custom']['#name']);
     $collection->set(static::COLLECTION_MODAL_STATE_DTSTART, $startDateStr);
     $collection->set(static::COLLECTION_MODAL_STATE_PATH, $path);
+    $collection->set(static::COLLECTION_MODAL_STATE_DELTA, $uniqueDelta);
 
     // Open modal.
     $content = $this->formBuilder
@@ -546,18 +559,21 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
   public function transferModalToFormStateCallback(array &$form, FormStateInterface $form_state) {
     $collection = $this->tempStoreFactory->get(static::COLLECTION_MODAL_STATE);
 
-    $fieldPath = $collection->get(static::COLLECTION_MODAL_STATE_PATH);
-    if ($fieldPath) {
+    $uniqueDelta = $collection->get(static::COLLECTION_MODAL_STATE_DELTA);
+    if ($uniqueDelta) {
       $customRrule = $collection->get(static::COLLECTION_MODAL_STATE_KEY);
       if (isset($customRrule)) {
-        $form_state->set([static::FORM_STATE_RRULE_KEY, $fieldPath], $customRrule);
+        $form_state->set([static::FORM_STATE_RRULE_KEY, $uniqueDelta], $customRrule);
         $collection->delete(static::COLLECTION_MODAL_STATE_KEY);
       }
 
-      [$fieldName, $delta] = explode('/', $fieldPath);
-      $input = &$form_state->getUserInput();
-      // After closing modal, switch dropdown to custom setting.
-      $input[$fieldName][$delta]['recurrence_option'] = 'custom';
+      $fieldPath = $collection->get(static::COLLECTION_MODAL_STATE_PATH);
+      if (isset($fieldPath)) {
+        [$fieldName, $delta] = explode('/', $fieldPath);
+        $input = &$form_state->getUserInput();
+        // After closing modal, switch dropdown to custom setting.
+        $input[$fieldName][$delta]['recurrence_option'] = 'custom';
+      }
     }
 
     $form_state->setRebuild();
@@ -709,6 +725,13 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     }
 
     return 'custom';
+  }
+
+  /**
+   * @param string $uniqueDelta
+   */
+  public static function getRruleValueFromState(string $uniqueDelta, $form_state): ?string {
+    return $form_state->get([static::FORM_STATE_RRULE_KEY, $uniqueDelta]);
   }
 
 }
