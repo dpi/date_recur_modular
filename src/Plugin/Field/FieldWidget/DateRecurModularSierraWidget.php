@@ -363,6 +363,25 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     }
     $element['recurrence_option']['#options']['custom_open'] = $this->t('Custom...');
 
+    $element['occurrences'] = [
+      '#type' => 'button',
+      '#value' => $this->t('Show/exclude occurrences'),
+      '#ajax' => [
+        'callback' => [$this, 'openOccurrencesModal'],
+        'event' => 'click',
+        'progress' => 'fullscreen',
+      ],
+      '#attributes' => [
+        'class' => [
+//          'js-hide',
+          'date-recur-modular-sierra-widget-recurrence-open',
+        ],
+      ],
+      '#limit_validation_errors' => [],
+      // Needs a unique name as formbuilder cant differentiate between deltas.
+      '#name' => Html::cleanCssIdentifier(implode('-', array_merge($elementParents, ['occurrences']))),
+    ];
+
     $element['time_zone'] = $this->getFieldTimeZone($timeZone);
     $element['time_zone']['#access'] = FALSE;
 
@@ -537,6 +556,43 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     $response = (new AjaxResponse())
       ->setAttachments($content['#attached'])
       ->addCommand(new OpenModalDialogCommand($this->t('Custom recurrence'), $content, $dialogOptions));
+    return $response;
+  }
+
+  /**
+   * Callback to convert RRULE data from form to modal then open modal.
+   */
+  public function openOccurrencesModal(array &$form, FormStateInterface $form_state) {
+    $button = $form_state->getTriggeringElement();
+    $element = NestedArray::getValue($form, array_slice($button['#array_parents'], 0, -1));
+    $formParents = $element['#array_parents'];
+    $valueParents = $element['#parents'];
+
+    // Transfer RULE and Start Date to temporary storage.
+    $timeZone = $form_state->getValue(array_merge($valueParents, ['time_zone']));
+    try {
+      $startDate = '';
+      $startDate = static::buildDatesFromFields(array_merge($formParents, ['day_start']), array_merge($formParents, ['time_start']), $timeZone, $form_state);
+    }
+    catch (\Exception $e) {
+    }
+    $startDateStr = $startDate instanceof \DateTime ? $startDate->format(static::COLLECTION_MODAL_STATE_DTSTART_FORMAT) : '';
+    $path = $form_state->getValue(array_merge($valueParents, ['field_path']));
+    $rruleState = $form_state->get([static::FORM_STATE_RRULE_KEY, $path]) ?? $form_state->getValue(array_merge($valueParents, ['rrule_in_storage']));
+
+    $collection = $this->tempStoreFactory->get(static::COLLECTION_MODAL_STATE);
+    $collection->set(static::COLLECTION_MODAL_STATE_KEY, $rruleState);
+    $collection->set(static::COLLECTION_MODAL_STATE_DTSTART, $startDateStr);
+    $collection->set(static::COLLECTION_MODAL_STATE_PATH, $path);
+
+    // Open modal.
+    $content = $this->formBuilder
+      ->getForm(\Drupal\date_recur_modular\Form\DateRecurModularSierraModalOccurrencesForm::class);
+    $content['#attached']['library'][] = 'core/drupal.dialog.ajax';
+    $dialogOptions = ['width' => '575'];
+    $response = (new AjaxResponse())
+      ->setAttachments($content['#attached'])
+      ->addCommand(new OpenModalDialogCommand($this->t('Occurrences'), $content, $dialogOptions));
     return $response;
   }
 

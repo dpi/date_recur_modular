@@ -20,6 +20,7 @@ use Drupal\date_recur_modular\DateRecurModularUtilityTrait;
 use Drupal\date_recur_modular\DateRecurModularWidgetFieldsTrait;
 use Drupal\date_recur_modular\DateRecurModularWidgetOptions;
 use Drupal\date_recur_modular\Plugin\Field\FieldWidget\DateRecurModularSierraWidget;
+use RRule\RSet;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -44,6 +45,8 @@ class DateRecurModularSierraModalForm extends FormBase {
   protected const MODE_MONTHLY = 'monthly';
 
   protected const MODE_YEARLY = 'yearly';
+
+  protected const UTC_FORMAT = 'Ymd\THis\Z';
 
   /**
    * Constructs a new DateRecurModularSierraModalForm.
@@ -87,6 +90,11 @@ class DateRecurModularSierraModalForm extends FormBase {
       ->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE);
 
     $rrule = $collection->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE_KEY);
+    $form['original_string'] = [
+      '#type' => 'value',
+      '#value' => $rrule,
+    ];
+
     $dtStartString = $collection->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE_DTSTART);
 
     if (!empty($dtStartString)) {
@@ -332,9 +340,27 @@ class DateRecurModularSierraModalForm extends FormBase {
     }
     $ruleString = implode(';', $ruleKv);
 
+    // Rset cannot be casted to string yet, rebuild it here, see also
+    // https://github.com/rlanvin/php-rrule/issues/37
+    $lines = [];
+    $lines[] = 'RRULE:' . $ruleString;
+
+    // Preserve non-RRULE components from original string.
+    $originalString = $form_state->getValue('original_string');
+    $rset = new RSet($originalString);
+    $utc = new \DateTimeZone('UTC');
+
+    $exDates = array_map(function (\DateTime $exDate) use ($utc) {
+      $exDate->setTimezone($utc);
+      return $exDate->format(static::UTC_FORMAT);
+    }, $rset->getExDates());
+    if (count($exDates) > 0) {
+      $lines[] = 'EXDATE:' . implode(',', $exDates);
+    }
+
     $collection = $this->tempStoreFactory
       ->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE);
-    $collection->set(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE_KEY, $ruleString);
+    $collection->set(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE_KEY, implode("\n", $lines));
 
     $refreshBtnName = sprintf('[name="%s"]', $collection->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE_REFRESH_BUTTON));
     $response
