@@ -116,10 +116,10 @@ trait DateRecurModularUtilityTrait {
       // value is empty. This typically happens if entity is new or this is a
       // blank extra field value.
       $defaultTimeZone = $this->fieldDefinition->getDefaultValueLiteral()[0]['default_time_zone'] ?? NULL;
-      // If still blank then use current user time zone.
-      if (empty($defaultTimeZone)) {
-        $defaultTimeZone = $this->getCurrentUserTimeZone();
-      }
+    }
+    // If still blank then use current user time zone.
+    if (empty($defaultTimeZone)) {
+      $defaultTimeZone = $this->getCurrentUserTimeZone();
     }
     return $defaultTimeZone;
   }
