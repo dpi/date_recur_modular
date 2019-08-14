@@ -109,9 +109,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     elseif ('WEEKLY' === $frequency) {
       /** @var int|null $interval */
       $interval = $parts['INTERVAL'] ?? NULL;
-      return
-        ($interval == 1 ? static::MODE_WEEKLY :
-        ($interval == 2 ? static::MODE_FORTNIGHTLY : NULL));
+      return [1 => static::MODE_WEEKLY, 2 => static::MODE_FORTNIGHTLY][$interval] ?? NULL;
     }
     elseif ('MONTHLY' === $frequency) {
       return static::MODE_MONTHLY;
