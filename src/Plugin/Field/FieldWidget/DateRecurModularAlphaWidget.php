@@ -277,6 +277,19 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     if (($start instanceof DrupalDateTime || $end instanceof DrupalDateTime) && (!$start instanceof DrupalDateTime || !$end instanceof DrupalDateTime)) {
       $form_state->setError($element, \t('Start date and end date must be provided.'));
     }
+
+    // Recreate datetime object with exactly the same date and time but
+    // different timezone.
+    $zoneLess = 'Y-m-d H:i:s';
+    $timeZoneObj = new \DateTimeZone($timeZone);
+    if ($start instanceof DrupalDateTime && $timeZone) {
+      $start = DrupalDateTime::createFromFormat($zoneLess, $start->format($zoneLess), $timeZoneObj);
+      $form_state->setValueForElement($element['start'], $start);
+    }
+    if ($end instanceof DrupalDateTime && $timeZone) {
+      $end = DrupalDateTime::createFromFormat($zoneLess, $end->format($zoneLess), $timeZoneObj);
+      $form_state->setValueForElement($element['end'], $end);
+    }
   }
 
   /**
