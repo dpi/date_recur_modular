@@ -371,4 +371,31 @@ class DateRecurModularAlphaTest extends WebDriverTestBase {
     return $data;
   }
 
+  /**
+   * Tests date/time/time zone is correct as loaded from storage.
+   */
+  public function testDefaultValuesFromStorage(): void {
+    $entity = DrEntityTest::create();
+    $entity->save();
+
+    $entity->dr = [
+      'value' => '2015-04-13T16:00:00',
+      'end_value' => '2015-04-13T18:00:00',
+      'rrule' => 'FREQ=WEEKLY;INTERVAL=1;COUNT=1',
+      // This time zone should be different to currentuser.
+      // Kigali: UTC+2 NO DST.
+      'timezone' => 'Africa/Kigali',
+    ];
+    $entity->save();
+
+    // Ensure all day is pre-checked if day is not full.
+    $this->drupalGet($entity->toUrl('edit-form'));
+
+    $this->assertSession()->fieldValueEquals('dr[0][start][date]', '2015-04-13');
+    $this->assertSession()->fieldValueEquals('dr[0][start][time]', '18:00:00');
+    $this->assertSession()->fieldValueEquals('dr[0][end][date]', '2015-04-13');
+    $this->assertSession()->fieldValueEquals('dr[0][end][time]', '20:00:00');
+    $this->assertSession()->fieldValueEquals('dr[0][time_zone]', 'Africa/Kigali');
+  }
+
 }

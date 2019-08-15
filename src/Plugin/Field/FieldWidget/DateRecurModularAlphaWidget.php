@@ -150,17 +150,23 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
 
     $fieldModes = $this->getFieldModes($grid);
 
+    $timeZone = $this->getDefaultTimeZone($item);
     $element['start'] = [
       '#type' => 'datetime',
       '#title' => $this->t('Starts on'),
       '#title_display' => 'invisible',
       '#default_value' => $item->start_date,
+      // \Drupal\Core\Datetime\Element\Datetime::valueCallback tries to change
+      // the time zone to current users timezone if not set, Set the timezone
+      // here so the value doesn't change.
+      '#date_timezone' => $timeZone,
     ];
     $element['end'] = [
       '#title' => $this->t('Ends on'),
       '#title_display' => 'invisible',
       '#type' => 'datetime',
       '#default_value' => $item->end_date,
+      '#date_timezone' => $timeZone,
     ];
 
     $element['mode'] = $this->getFieldMode($item);
@@ -187,7 +193,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     $element['ordinals']['#states'] = $this->getVisibilityStates($element, $fieldModes['ordinals'] ?? []);
     $element['ordinals']['#title_display'] = 'invisible';
 
-    $element['time_zone'] = $this->getFieldTimeZone($this->getDefaultTimeZone($item));
+    $element['time_zone'] = $this->getFieldTimeZone($timeZone);
 
     $endsModeDefault =
       $endsDate ? DateRecurModularWidgetOptions::ENDS_MODE_ON_DATE :
