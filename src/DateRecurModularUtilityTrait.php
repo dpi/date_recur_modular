@@ -199,13 +199,10 @@ trait DateRecurModularUtilityTrait {
   /**
    * Determine whether a field item represents a full day.
    *
-   * Full day is determined by the current user timezone.
+   * Perspective of full day is determined by the current user [timezone].
    *
    * @param \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item
    *   Date recur field item.
-   * @param \Drupal\Core\Session\AccountInterface $account
-   *   From this users perspective determine if the date range represents a
-   *   all-day value.
    * @param bool $sameDay
    *   Whether dates must be the same calendar day.
    *
@@ -215,11 +212,12 @@ trait DateRecurModularUtilityTrait {
    * @throws \Exception
    *   If account has an invalid time zone.
    */
-  protected function isAllDay(DateRecurItem $item, AccountInterface $account, bool $sameDay = FALSE): bool {
+  protected function isAllDay(DateRecurItem $item, bool $sameDay = FALSE): bool {
     $startDate = $item->start_date ? clone $item->start_date : NULL;
     $endDate = $item->end_date ? clone $item->end_date : NULL;
     if ($startDate && $endDate) {
-      $accountTimeZone = new \DateTimeZone($account->getTimeZone());
+      $timeZoneRaw = $this->getCurrentUserTimeZone();
+      $accountTimeZone = new \DateTimeZone($timeZoneRaw);
       $startDate->setTimezone($accountTimeZone);
       $endDate->setTimezone($accountTimeZone);
 
