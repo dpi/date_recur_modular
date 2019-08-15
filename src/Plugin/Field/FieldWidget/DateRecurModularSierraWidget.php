@@ -21,6 +21,7 @@ use Drupal\date_recur\Entity\DateRecurInterpreter;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_modular\DateRecurModularWidgetFieldsTrait;
 use Drupal\date_recur_modular\Form\DateRecurModularSierraModalForm;
+use Drupal\user\UserInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -341,7 +342,7 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     $element['is_all_day'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('All day'),
-      '#default_value' => $this->isAllDay($item, $this->currentUser),
+      '#default_value' => $this->isAllDay($item),
     ];
 
     $element['recurrence_option'] = [
