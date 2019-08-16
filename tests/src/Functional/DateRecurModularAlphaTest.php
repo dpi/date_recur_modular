@@ -398,4 +398,48 @@ class DateRecurModularAlphaTest extends WebDriverTestBase {
     $this->assertSession()->fieldValueEquals('dr[0][time_zone]', 'Africa/Kigali');
   }
 
+  /**
+   * Tests dates adjusted to time zone from storage then re-save.
+   *
+   * Dates must save correctly when changing the time zone after loading the
+   * form, then re-saving.
+   */
+  public function testTimeZoneChanged(): void {
+    $entity = DrEntityTest::create();
+    $entity->save();
+
+    $entity->dr = [
+      'value' => '2015-04-13T16:00:00',
+      'end_value' => '2015-04-13T18:00:00',
+      'rrule' => 'FREQ=WEEKLY;INTERVAL=1;UNTIL=20151011T140000Z',
+      // UTC+2.
+      'timezone' => 'Africa/Kigali',
+    ];
+    $entity->save();
+
+    $this->drupalGet($entity->toUrl('edit-form'));
+
+    $this->assertSession()->fieldValueEquals('dr[0][ends_mode]', 'date');
+    $this->assertSession()->fieldValueEquals('dr[0][time_zone]', 'Africa/Kigali');
+    $this->assertSession()->fieldValueEquals('dr[0][start][time]', '18:00:00');
+    $this->assertSession()->fieldValueEquals('dr[0][end][time]', '20:00:00');
+    $this->assertSession()->fieldValueEquals('dr[0][ends_date][date]', '2015-10-11');
+    $this->assertSession()->fieldValueEquals('dr[0][ends_date][time]', '16:00:00');
+
+    $values = [
+      // Change to UTC+4.
+      'dr[0][time_zone]' => 'Indian/Mauritius',
+    ];
+    $this->drupalPostForm(NULL, $values, 'Save');
+    $this->assertSession()->pageTextContains('has been updated.');
+
+    // All values should be updated to account for different time zone, all
+    // values above in field value assertions should be offset -4 hours.
+    $entity = DrEntityTest::load($entity->id());
+    $this->assertEquals('Indian/Mauritius', $entity->dr->timezone);
+    $this->assertEquals('2015-04-13T14:00:00', $entity->dr->value);
+    $this->assertEquals('2015-04-13T16:00:00', $entity->dr->end_value);
+    $this->assertEquals('FREQ=WEEKLY;INTERVAL=1;UNTIL=20151011T120000Z', $entity->dr->rrule);
+  }
+
 }
