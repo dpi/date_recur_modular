@@ -29,7 +29,7 @@ abstract class DateRecurModularWidgetBase extends WidgetBase implements Containe
   protected $configFactory;
 
   /**
-   * Constructs a new DateRecurOpeningHoursFormatter.
+   * Constructs a new DateRecurModularWidgetBase.
    *
    * @param string $plugin_id
    *   The plugin_id for the formatter.

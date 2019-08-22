@@ -24,7 +24,6 @@ use Drupal\date_recur\Entity\DateRecurInterpreterInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_modular\DateRecurModularWidgetFieldsTrait;
 use Drupal\date_recur_modular\Form\DateRecurModularSierraModalForm;
-use Drupal\user\UserInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -219,7 +218,7 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
   }
 
   /**
-   * Constructs a new DateRecurOpeningHoursFormatter.
+   * Constructs a new DateRecurModularSierraWidget.
    *
    * @param string $plugin_id
    *   The plugin_id for the formatter.
