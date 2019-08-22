@@ -68,7 +68,7 @@
   left: 2px;
   right: 2px;
   bottom: 2px;
-  pointer-events: none
+  pointer-events: none;
 }
 .date-recur-modular-oscar-widget .parts--is-all-day .form-radios > * {
   margin: 0;

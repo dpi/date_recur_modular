@@ -109,9 +109,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     elseif ('WEEKLY' === $frequency) {
       /** @var int|null $interval */
       $interval = $parts['INTERVAL'] ?? NULL;
-      return
-        ($interval == 1 ? static::MODE_WEEKLY :
-        ($interval == 2 ? static::MODE_FORTNIGHTLY : NULL));
+      return [1 => static::MODE_WEEKLY, 2 => static::MODE_FORTNIGHTLY][$interval] ?? NULL;
     }
     elseif ('MONTHLY' === $frequency) {
       return static::MODE_MONTHLY;
@@ -129,6 +127,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     $element['#element_validate'][] = [static::class, 'validateModularWidget'];
     $element['#after_build'][] = [static::class, 'afterBuildModularWidget'];
     $element['#theme'] = 'date_recur_modular_alpha_widget';
+    $element['#theme_wrappers'][] = 'form_element';
 
     $item = $items[$delta];
 
@@ -136,6 +135,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     $rule = $this->getRule($item);
     $parts = $rule ? $rule->getParts() : [];
     $count = $parts['COUNT'] ?? NULL;
+    $timeZone = $this->getDefaultTimeZone($item);
     $endsDate = NULL;
     try {
       $until = $parts['UNTIL'] ?? NULL;
@@ -144,6 +144,10 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
       }
       elseif ($until instanceof \DateTimeInterface) {
         $endsDate = $until;
+      }
+      if ($endsDate) {
+        // UNTIL is _usually_ in UTC, adjust it to the field time zone.
+        $endsDate->setTimezone(new \DateTimeZone($timeZone));
       }
     }
     catch (\Exception $e) {
@@ -156,12 +160,17 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
       '#title' => $this->t('Starts on'),
       '#title_display' => 'invisible',
       '#default_value' => $item->start_date,
+      // \Drupal\Core\Datetime\Element\Datetime::valueCallback tries to change
+      // the time zone to current users timezone if not set, Set the timezone
+      // here so the value doesn't change.
+      '#date_timezone' => $timeZone,
     ];
     $element['end'] = [
       '#title' => $this->t('Ends on'),
       '#title_display' => 'invisible',
       '#type' => 'datetime',
       '#default_value' => $item->end_date,
+      '#date_timezone' => $timeZone,
     ];
 
     $element['mode'] = $this->getFieldMode($item);
@@ -188,7 +197,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     $element['ordinals']['#states'] = $this->getVisibilityStates($element, $fieldModes['ordinals'] ?? []);
     $element['ordinals']['#title_display'] = 'invisible';
 
-    $element['time_zone'] = $this->getFieldTimeZone($this->getDefaultTimeZone($item));
+    $element['time_zone'] = $this->getFieldTimeZone($timeZone);
 
     $endsModeDefault =
       $endsDate ? DateRecurModularWidgetOptions::ENDS_MODE_ON_DATE :
@@ -235,7 +244,12 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
       '#default_value' => $endsDate ? DrupalDateTime::createFromDateTime($endsDate) : NULL,
       // Fix values tree thanks to state+container hack.
       '#parents' => array_merge($elementParents, ['ends_date']),
+      // \Drupal\Core\Datetime\Element\Datetime::valueCallback tries to change
+      // the time zone to current users timezone if not set, Set the timezone
+      // here so the value doesn't change.
+      '#date_timezone' => $timeZone,
     ];
+
     $element['ends_date']['#states']['visible'] = [];
     foreach ($fieldModes['ends_date'] ?? [] as $mode) {
       $element['ends_date']['#states']['visible'][] = [
@@ -275,6 +289,25 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
     }
     if (($start instanceof DrupalDateTime || $end instanceof DrupalDateTime) && (!$start instanceof DrupalDateTime || !$end instanceof DrupalDateTime)) {
       $form_state->setError($element, \t('Start date and end date must be provided.'));
+    }
+
+    // Recreate datetime object with exactly the same date and time but
+    // different timezone.
+    $zoneLess = 'Y-m-d H:i:s';
+    $timeZoneObj = new \DateTimeZone($timeZone);
+    if ($start instanceof DrupalDateTime && $timeZone) {
+      $start = DrupalDateTime::createFromFormat($zoneLess, $start->format($zoneLess), $timeZoneObj);
+      $form_state->setValueForElement($element['start'], $start);
+    }
+    if ($end instanceof DrupalDateTime && $timeZone) {
+      $end = DrupalDateTime::createFromFormat($zoneLess, $end->format($zoneLess), $timeZoneObj);
+      $form_state->setValueForElement($element['end'], $end);
+    }
+    /** @var \Drupal\Core\Datetime\DrupalDateTime|array|null $endsDate */
+    $endsDate = $form_state->getValue(array_merge($element['#parents'], ['ends_date']));
+    if ($endsDate instanceof DrupalDateTime && $timeZone) {
+      $endsDate = DrupalDateTime::createFromFormat($zoneLess, $endsDate->format($zoneLess), $timeZoneObj);
+      $form_state->setValueForElement($element['ends_date'], $endsDate);
     }
   }
 
@@ -335,7 +368,8 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
       assert(!isset($start) || $start instanceof DrupalDateTime);
       $end = $value['end'] ?? NULL;
       assert(!isset($end) || $end instanceof DrupalDateTime);
-      $timeZone = $value['time_zone'] ?? NULL;
+      $timeZone = $value['time_zone'];
+      assert(is_string($timeZone));
       $mode = $value['mode'] ?? NULL;
       $endsMode = $value['ends_mode'] ?? NULL;
       /** @var \Drupal\Core\Datetime\DrupalDateTime|array|null $endsDate */

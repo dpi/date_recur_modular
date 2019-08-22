@@ -24,6 +24,7 @@ use Drupal\date_recur\Entity\DateRecurInterpreterInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_modular\DateRecurModularWidgetFieldsTrait;
 use Drupal\date_recur_modular\Form\DateRecurModularSierraModalForm;
+use Drupal\user\UserInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -448,7 +449,7 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     $element['is_all_day'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('All day'),
-      '#default_value' => $this->isAllDay($item, $this->currentUser),
+      '#default_value' => $this->isAllDay($item),
     ];
 
     $element['recurrence_option'] = [
@@ -795,6 +796,7 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     $bySetPos = array_unique(explode(',', $byParts['BYSETPOS'] ?? ''));
     sort($bySetPos);
 
+    $startDayWeekday = $weekdaysKeys[$startDate->format('w')];
     if ($interval == 1 && $count == 1) {
       if ($byPartCount === 0 && $frequency === 'DAILY') {
         return 'daily';
@@ -802,7 +804,8 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       elseif ($frequency === 'WEEKLY' && $byDayStr === 'MO,TU,WE,TH,FR' && $byPartCount === 1) {
         return 'weekdayly';
       }
-      elseif ($frequency === 'WEEKLY' && $byPartCount === 1 && count($byDay) === 1) {
+      elseif ($frequency === 'WEEKLY' && $byPartCount === 1 && count($byDay) === 1 && $byDayStr === $startDayWeekday) {
+        // Only if weekday is same as start day.
         return 'weekly_oneday';
       }
       elseif ($frequency === 'MONTHLY' && $byPartCount === 2 && count($bySetPos) === 1 && count($byDay) === 1) {
