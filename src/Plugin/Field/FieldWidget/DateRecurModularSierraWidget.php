@@ -383,9 +383,12 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       /** @var \Drupal\date_recur\Plugin\DateRecurInterpreterPluginInterface $plugin */
       $interpreter = $this->getInterpreter();
       if ($interpreter) {
-        $plugin = $this->getInterpreter()->getPlugin();
+        $plugin = $interpreter->getPlugin();
         $language = $this->languageManager->getCurrentLanguage()->getId();
         $interpretation = $plugin->interpret($rules, $language);
+      }
+      else {
+        $interpretation = (string) $this->t('Custom: - Missing interpreter -');
       }
     }
 
