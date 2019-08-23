@@ -9,6 +9,8 @@ use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\OpenModalDialogCommand;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Datetime\DateFormatInterface;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\DependencyTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -24,6 +26,7 @@ use Drupal\date_recur\Entity\DateRecurInterpreterInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_modular\DateRecurModularWidgetFieldsTrait;
 use Drupal\date_recur_modular\Form\DateRecurModularSierraModalForm;
+use Drupal\date_recur_modular\Form\DateRecurModularSierraModalOccurrencesForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -77,6 +80,11 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
    * Stores field and delta.
    */
   public const COLLECTION_MODAL_STATE_PATH = 'field_and_delta';
+
+  /**
+   * Stores date format to use for occurrences.
+   */
+  public const COLLECTION_MODAL_DATE_FORMAT = 'date_format';
 
   /**
    * Form state key.
@@ -138,11 +146,26 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
   protected $languageManager;
 
   /**
+   * The date format entity storage.
+   *
+   * @var \Drupal\Core\Entity\EntityStorageInterface
+   */
+  protected $dateFormatStorage;
+
+  /**
+   * The date formatter service.
+   *
+   * @var \Drupal\Core\Datetime\DateFormatterInterface
+   */
+  protected $dateFormatter;
+
+  /**
    * {@inheritdoc}
    */
   public static function defaultSettings(): array {
     return [
       'interpreter' => TRUE,
+      'date_format_type' => 'medium',
     ] + parent::defaultSettings();
   }
 
@@ -158,6 +181,14 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
         '@label' => $interpreter->label() ?? $this->t('- Missing label -'),
       ]) :
       $this->t('No interpreter');
+
+    $dateFormatId = $this->getSetting('date_format_type');
+    $dateFormat = $this->dateFormatStorage->load($dateFormatId);
+    $summary[] = $dateFormat
+      ? $this->t('Occurrence date format: @label', [
+        '@label' => $dateFormat->label() ?? $dateFormat->id(),
+      ])
+      : $this->t('Occurrence date format: missing date format');
 
     return $summary;
   }
@@ -181,6 +212,20 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       '#empty_option' => $this->t('- Do not show interpreted rule -'),
     ];
 
+    $dateFormatOptions = array_map(function (DateFormatInterface $dateFormat) {
+      $time = new DrupalDateTime();
+      $format = $this->dateFormatter->format($time->getTimestamp(), $dateFormat->id());
+      return $dateFormat->label() . ' (' . $format . ')';
+    }, $this->dateFormatStorage->loadMultiple());
+
+    $form['date_format_type'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Occurrence date format'),
+      '#description' => $this->t('Date format type to display occurrences and excluded occurrences.'),
+      '#options' => $dateFormatOptions,
+      '#default_value' => $this->getSetting('date_format_type'),
+    ];
+
     return $form;
   }
 
@@ -193,6 +238,13 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     if ($interpreter) {
       $this->addDependency('config', $interpreter->getConfigDependencyName());
     }
+
+    $id = $this->getSetting('date_format_type');
+    $dateFormat = $this->dateFormatStorage->load($id);
+    if ($dateFormat) {
+      $this->addDependency('config', $dateFormat->getConfigDependencyName());
+    }
+
     return $this->dependencies;
   }
 
@@ -242,14 +294,18 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
    *   The entity type manager.
    * @param \Drupal\Core\Language\LanguageManagerInterface $languageManager
    *   The language manager.
+   * @param \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter
+   *   The date formatter service.
    */
-  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, ConfigFactoryInterface $configFactory, PrivateTempStoreFactory $tempStoreFactory, FormBuilderInterface $formBuilder, AccountInterface $currentUser, EntityTypeManagerInterface $entityTypeManager, LanguageManagerInterface $languageManager) {
+  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, ConfigFactoryInterface $configFactory, PrivateTempStoreFactory $tempStoreFactory, FormBuilderInterface $formBuilder, AccountInterface $currentUser, EntityTypeManagerInterface $entityTypeManager, LanguageManagerInterface $languageManager, DateFormatterInterface $dateFormatter) {
     parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $third_party_settings, $configFactory);
     $this->tempStoreFactory = $tempStoreFactory;
     $this->formBuilder = $formBuilder;
     $this->currentUser = $currentUser;
     $this->dateRecurInterpreterStorage = $entityTypeManager->getStorage('date_recur_interpreter');
+    $this->dateFormatStorage = $entityTypeManager->getStorage('date_format');
     $this->languageManager = $languageManager;
+    $this->dateFormatter = $dateFormatter;
   }
 
   /**
@@ -267,7 +323,8 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       $container->get('form_builder'),
       $container->get('current_user'),
       $container->get('entity_type.manager'),
-      $container->get('language_manager')
+      $container->get('language_manager'),
+      $container->get('date.formatter')
     );
   }
 
@@ -483,8 +540,7 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       ],
       '#attributes' => [
         'class' => [
-//          'js-hide',
-          'date-recur-modular-sierra-widget-recurrence-open',
+          'date-recur-modular-sierra-widget-occurrences-open',
         ],
       ],
       '#limit_validation_errors' => [],
@@ -637,36 +693,15 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
   public function openTheModal(array &$form, FormStateInterface $form_state) {
     $button = $form_state->getTriggeringElement();
     $element = NestedArray::getValue($form, array_slice($button['#array_parents'], 0, -2));
-    $formParents = $element['#array_parents'];
-    $valueParents = $element['#parents'];
-
-    // Transfer RULE and Start Date to temporary storage.
-    $timeZone = $form_state->getValue(array_merge($valueParents, ['time_zone']));
-    try {
-      $startDate = '';
-      $startDate = static::buildDatesFromFields(array_merge($formParents, ['day_start']), array_merge($formParents, ['time_start']), $timeZone, $form_state);
-    }
-    catch (\Exception $e) {
-    }
-    $startDateStr = $startDate instanceof \DateTime ? $startDate->format(static::COLLECTION_MODAL_STATE_DTSTART_FORMAT) : '';
-    $path = $form_state->getValue(array_merge($valueParents, ['field_path']));
-    $rruleState = $form_state->get([static::FORM_STATE_RRULE_KEY, $path]) ?? $form_state->getValue(array_merge($valueParents, ['rrule_in_storage']));
-
-    $collection = $this->tempStoreFactory->get(static::COLLECTION_MODAL_STATE);
-    $collection->set(static::COLLECTION_MODAL_STATE_KEY, $rruleState);
-    $collection->set(static::COLLECTION_MODAL_STATE_REFRESH_BUTTON, $element['buttons']['reload_recurrence_dropdown_custom']['#name']);
-    $collection->set(static::COLLECTION_MODAL_STATE_DTSTART, $startDateStr);
-    $collection->set(static::COLLECTION_MODAL_STATE_PATH, $path);
+    $this->transferStateToTempstore($element, $form_state);
 
     // Open modal.
-    $content = $this->formBuilder
-      ->getForm(DateRecurModularSierraModalForm::class);
+    $content = $this->formBuilder->getForm(DateRecurModularSierraModalForm::class);
     $content['#attached']['library'][] = 'core/drupal.dialog.ajax';
     $dialogOptions = ['width' => '575'];
-    $response = (new AjaxResponse())
+    return (new AjaxResponse())
       ->setAttachments($content['#attached'])
       ->addCommand(new OpenModalDialogCommand($this->t('Custom recurrence'), $content, $dialogOptions));
-    return $response;
   }
 
   /**
@@ -675,6 +710,26 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
   public function openOccurrencesModal(array &$form, FormStateInterface $form_state) {
     $button = $form_state->getTriggeringElement();
     $element = NestedArray::getValue($form, array_slice($button['#array_parents'], 0, -1));
+    $this->transferStateToTempstore($element, $form_state);
+
+    // Open modal.
+    $content = $this->formBuilder->getForm(DateRecurModularSierraModalOccurrencesForm::class);
+    $content['#attached']['library'][] = 'core/drupal.dialog.ajax';
+    $dialogOptions = ['width' => '575'];
+    return (new AjaxResponse())
+      ->setAttachments($content['#attached'])
+      ->addCommand(new OpenModalDialogCommand($this->t('Occurrences'), $content, $dialogOptions));
+  }
+
+  /**
+   * Transfers element state to tempstore ready for modal to consume.
+   *
+   * @param array $element
+   *   A single form element.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  protected function transferStateToTempstore(array $element, FormStateInterface $form_state): void {
     $formParents = $element['#array_parents'];
     $valueParents = $element['#parents'];
 
@@ -694,16 +749,8 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     $collection->set(static::COLLECTION_MODAL_STATE_KEY, $rruleState);
     $collection->set(static::COLLECTION_MODAL_STATE_DTSTART, $startDateStr);
     $collection->set(static::COLLECTION_MODAL_STATE_PATH, $path);
-
-    // Open modal.
-    $content = $this->formBuilder
-      ->getForm(\Drupal\date_recur_modular\Form\DateRecurModularSierraModalOccurrencesForm::class);
-    $content['#attached']['library'][] = 'core/drupal.dialog.ajax';
-    $dialogOptions = ['width' => '575'];
-    $response = (new AjaxResponse())
-      ->setAttachments($content['#attached'])
-      ->addCommand(new OpenModalDialogCommand($this->t('Occurrences'), $content, $dialogOptions));
-    return $response;
+    $collection->set(static::COLLECTION_MODAL_DATE_FORMAT, $this->getSetting('date_format_type'));
+    $collection->set(static::COLLECTION_MODAL_STATE_REFRESH_BUTTON, $element['buttons']['reload_recurrence_dropdown_custom']['#name']);
   }
 
   /**

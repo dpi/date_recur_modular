@@ -13,3 +13,6 @@ field.widget.settings.date_recur_modular_sierra:
     interpreter:
       type: string
       label: 'Interpreter instance ID'
+    date_format_type:
+      type: string
+      label: 'Date format type to display occurrences and excluded occurrences.'
