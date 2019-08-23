@@ -123,7 +123,7 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state): array {
     /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList|\Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem[] $items */
-    $elementParents = [$this->fieldDefinition->getName(), $delta];
+    $elementParents = array_merge($element['#field_parents'], [$this->fieldDefinition->getName(), $delta]);
     $element['#element_validate'][] = [static::class, 'validateModularWidget'];
     $element['#after_build'][] = [static::class, 'afterBuildModularWidget'];
     $element['#theme'] = 'date_recur_modular_alpha_widget';
