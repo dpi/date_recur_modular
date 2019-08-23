@@ -266,10 +266,10 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
       $i++;
     }
 
-    $form['show_more'] = [
+    $form['occurrences']['show_more'] = [
       '#type' => 'container',
     ];
-    $form['show_more']['count_message'] = [
+    $form['occurrences']['show_more']['count_message'] = [
       '#type' => 'inline_template',
       '#template' => '<p>{{ count_message }}</p>',
       '#context' => [
@@ -278,7 +278,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
     ];
     if (count($outOfLimitExcludes) > 0) {
       $nextExclude = reset($outOfLimitExcludes);
-      $form['show_more']['next_message'] = [
+      $form['occurrences']['show_more']['next_message'] = [
         '#type' => 'inline_template',
         '#template' => '<p>{{ next_message }}</p>',
         '#context' => [
@@ -288,7 +288,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
         ],
       ];
     }
-    $form['show_more']['show_more'] = [
+    $form['occurrences']['show_more']['show_more'] = [
       '#type' => 'submit',
       '#value' => $this->t('Show more'),
       '#ajax' => [

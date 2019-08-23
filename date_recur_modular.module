@@ -83,5 +83,5 @@ function template_preprocess_date_recur_modular_sierra_widget_modal_form(array &
  */
 function template_preprocess_date_recur_modular_sierra_widget_modal_occurrences_form(array &$variables): void {
   $variables['attributes']['class'][] = 'date-recur-modular-sierra-occurences-modal';
-  $variables['form']['show_more']['#attributes']['class'][] = 'show-more-wrapper';
+  $variables['form']['occurrences']['show_more']['#attributes']['class'][] = 'show-more-wrapper';
 }
