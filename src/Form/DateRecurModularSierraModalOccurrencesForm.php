@@ -32,13 +32,16 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
   use DateRecurModularUtilityTrait;
 
   /**
+   * Date format for exclusion dates.
+   */
+  protected const UTC_FORMAT = 'Ymd\THis\Z';
+
+  /**
    * The PrivateTempStore factory.
    *
    * @var \Drupal\Core\TempStore\PrivateTempStoreFactory
    */
   protected $tempStoreFactory;
-
-  protected const UTC_FORMAT = 'Ymd\THis\Z';
 
   /**
    * The date formatter service.
@@ -48,7 +51,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
   protected $dateFormatter;
 
   /**
-   * Constructs a new DateRecurModularSierraModalForm.
+   * Constructs a new DateRecurModularSierraModalOccurrencesForm.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
    *   A config factory for retrieving required config objects.
@@ -325,7 +328,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
   }
 
   /**
-   * {@inheritdoc}
+   * Callback to reload modal with more occurrences.
    */
   public function ajaxShowMore(array &$form, FormStateInterface $form_state): AjaxResponse {
     $form_state->setRebuild();
@@ -344,7 +347,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
   }
 
   /**
-   * {@inheritdoc}
+   * Callback to submit modal modified exclusions.
    */
   public function ajaxSubmitForm(array &$form, FormStateInterface $form_state) {
     $response = new AjaxResponse();
