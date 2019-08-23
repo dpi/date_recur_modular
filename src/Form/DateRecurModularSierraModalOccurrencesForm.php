@@ -92,6 +92,8 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
     }
 
     // @todo show interpreted rule at top so u dont have to switch out/reopen custom modal of the popout to remember what the rule was
+
+
     $form['#attached']['library'][] = 'date_recur_modular/date_recur_modular_sierra_widget_modal_form';
     $form['#attached']['library'][] = 'core/drupal.ajax';
     $form['#theme'] = 'date_recur_modular_sierra_widget_modal_form';

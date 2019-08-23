@@ -12,6 +12,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Datetime\DateFormatInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Datetime\Entity\DateFormat;
 use Drupal\Core\Entity\DependencyTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
@@ -407,13 +408,22 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     if ($startDateInput) {
       $startDate = \DateTime::createFromFormat('Y-m-d', $startDateInput, new \DateTimeZone($timeZone));
       if ($startDate) {
-        $startDate->setTime(0, 0, 0);
+        $startTimeInput = NestedArray::getValue($form_state->getUserInput(), array_merge($elementParents, ['time_start']));
+        if (is_string($startTimeInput)) {
+          $timeObject = $this->parseTimeInput($startTimeInput);
+          if ($timeObject) {
+            $startDate->setTime(...explode(':', $timeObject->format('H:i:s')));
+          }
+          else {
+            $startDate->setTime(0, 0, 0);
+          }
+        }
       }
     }
     elseif ($item->start_date instanceof DrupalDateTime) {
       $startDate = $item->start_date->getPhpDateTime();
     }
-    if (!isset($startDate)) {
+    if (!isset($startDate) || $startDate === FALSE) {
       $startDate = new \DateTime();
     }
 
@@ -936,6 +946,33 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       return NULL;
     }
     return $this->dateRecurInterpreterStorage->load($id);
+  }
+
+  /**
+   * Parses raw input from a time field.
+   *
+   * Inspired by \Drupal\Core\Datetime\Element\Datetime::valueCallback, exists
+   * because plain 'time' fields do not have value callbacks.
+   *
+   * @param string $input
+   *   Input from a time field.
+   *
+   * @return \Drupal\Core\Datetime\DrupalDateTime|null
+   *   A date object, or NULL if input was invalid. The date portion of this
+   *   object should be ignored.
+   */
+  protected function parseTimeInput(string $input): ?DrupalDateTime {
+    if (strlen($input) == 5) {
+      $input .= ':00';
+    }
+
+    $timeFormat = DateFormat::load('html_time')->getPattern();
+    try {
+      return DrupalDateTime::createFromFormat($timeFormat, $input);
+    }
+    catch (\Exception $e) {
+      return NULL;
+    }
   }
 
 }
