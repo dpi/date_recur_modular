@@ -133,6 +133,9 @@ trait DateRecurModularUtilityTrait {
    *   A rule.
    */
   protected function getRule(DateRecurItem $item): ?DateRecurRuleInterface {
+    if ($item->isEmpty()) {
+      return NULL;
+    }
     try {
       $helper = $item->getHelper();
     }

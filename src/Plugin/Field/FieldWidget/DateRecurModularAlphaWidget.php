@@ -84,6 +84,9 @@ class DateRecurModularAlphaWidget extends DateRecurModularWidgetBase {
    * {@inheritdoc}
    */
   protected function getMode(DateRecurItem $item): ?string {
+    if ($item->isEmpty()) {
+      return NULL;
+    }
     try {
       $helper = $item->getHelper();
     }
