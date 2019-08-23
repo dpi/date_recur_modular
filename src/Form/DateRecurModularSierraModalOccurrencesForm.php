@@ -214,9 +214,9 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
           'date' => $this->t('Date'),
         ],
       ];
-      $form['invalid_excludes']['table']['#rows'] = array_map(function (\DateTime $date) use ($dateFormatId): array {
+      $form['invalid_excludes']['table']['#rows'] = array_map(function (\DateTime $date) use ($dateFormatId, $dtStart): array {
         return [
-          'date' => $this->dateFormatter->format($date->getTimestamp(), $dateFormatId),
+          'date' => $this->dateFormatter->format($date->getTimestamp(), $dateFormatId, '', $dtStart->getTimezone()->getName()),
         ];
       }, $unmatchedExcludes);
     }
@@ -260,7 +260,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
         '#return_value' => $i,
         '#default_value' => $excluded,
       ];
-      $row['date']['#markup'] = $this->dateFormatter->format($date->getTimestamp(), $dateFormatId);
+      $row['date']['#markup'] = $this->dateFormatter->format($date->getTimestamp(), $dateFormatId, '', $dtStart->getTimezone()->getName());
       $row['#date_object'] = $date;
       $form['occurrences']['table'][$i] = $row;
       $i++;
@@ -283,7 +283,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
         '#template' => '<p>{{ next_message }}</p>',
         '#context' => [
           'next_message' => $this->t('Next hidden excluded occurrence is at @date', [
-            '@date' => $this->dateFormatter->format($nextExclude->getTimestamp(), $dateFormatId),
+            '@date' => $this->dateFormatter->format($nextExclude->getTimestamp(), $dateFormatId, '', $dtStart->getTimezone()->getName()),
           ]),
         ],
       ];
