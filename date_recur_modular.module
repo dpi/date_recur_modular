@@ -24,6 +24,9 @@ function date_recur_modular_theme(array $existing, string $type, string $theme, 
     'date_recur_modular_sierra_widget_modal_form' => [
       'render element' => 'form',
     ],
+    'date_recur_modular_sierra_widget_modal_occurrences_form' => [
+      'render element' => 'form',
+    ],
     'date_recur_modular_sierra_widget_modal_form_ends' => [
       'render element' => 'form',
     ],
@@ -71,4 +74,14 @@ function template_preprocess_date_recur_modular_sierra_widget_modal_form(array &
   // run so attributes are not replicated to children.
   $variables['form']['weekdays']['#attributes']['class'][] = 'container-inline';
   $variables['form']['weekdays']['#attributes']['class'][] = 'weekdays';
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ *
+ * HOOK: 'date_recur_modular_sierra_widget_modal_occurrences_form'.
+ */
+function template_preprocess_date_recur_modular_sierra_widget_modal_occurrences_form(array &$variables): void {
+  $variables['attributes']['class'][] = 'date-recur-modular-sierra-occurences-modal';
+  $variables['form']['occurrences']['show_more']['#attributes']['class'][] = 'show-more-wrapper';
 }

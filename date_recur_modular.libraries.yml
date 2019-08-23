@@ -25,3 +25,8 @@ date_recur_modular_sierra_widget_modal_form:
   css:
     theme:
       css/date-recur-modular-sierra-widget-modal-form.css: {}
+
+sierra_modal_occurrences_form:
+  css:
+    theme:
+      css/sierra-modal-occurrences-form.css: {}
