@@ -85,26 +85,21 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
+    $form['#attached']['library'][] = 'date_recur_modular/sierra_modal_occurrences_form';
+    $form['#attached']['library'][] = 'core/drupal.ajax';
+    $form['#theme'] = 'date_recur_modular_sierra_widget_modal_occurrences_form';
+
+    $collection = $this->tempStoreFactory->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE);
+    /** @var string|null $rrule */
+    $rrule = $collection->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE_KEY);
+    /** @var string $dateFormat */
+    $dateFormatId = $collection->get(DateRecurModularSierraWidget::COLLECTION_MODAL_DATE_FORMAT);
+
     $multiplier = $form_state->get('occurrence_multiplier');
     if (!isset($multiplier)) {
       $form_state->set('occurrence_multiplier', 1);
       $multiplier = 1;
     }
-
-    // @todo show interpreted rule at top so u dont have to switch out/reopen custom modal of the popout to remember what the rule was
-
-
-    $form['#attached']['library'][] = 'date_recur_modular/date_recur_modular_sierra_widget_modal_form';
-    $form['#attached']['library'][] = 'core/drupal.ajax';
-    $form['#theme'] = 'date_recur_modular_sierra_widget_modal_form';
-
-    $collection = $this->tempStoreFactory
-      ->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE);
-
-    $rrule = $collection->get(DateRecurModularSierraWidget::COLLECTION_MODAL_STATE_KEY);
-
-    /** @var string $dateFormat */
-    $dateFormatId = $collection->get(DateRecurModularSierraWidget::COLLECTION_MODAL_DATE_FORMAT);
 
     $form['original_string'] = [
       '#type' => 'value',
@@ -133,7 +128,7 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
       }
     }
 
-    // Rebuild using Rset becauae we want to be able to iterate over occurrences
+    // Rebuild using Rset because we want to be able to iterate over occurrences
     // without considering any existing EXDATEs.
     $rset = new RSet();
     /** @var \DateTime[] $excluded */
@@ -149,8 +144,9 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
     // Initial limit is 1024, with 128 per page thereafter, with an absolute
     // maximum of 64000. Limit prevents performance issues and abuse.
     $limit = min(1024 + (128 * ($multiplier - 1)), 64000);
-    $limitDate = (new \DateTime('23:59:59 last day of december this year'))
-      ->modify(sprintf('+%d months', ($multiplier - 1) * 4));
+    // 6 months from now plus 4 months thereafter.
+    $limitDate = (new \DateTime())
+      ->modify(sprintf('+%d months', 6 + (($multiplier - 1) * 4)));
     $occurrences = [];
     $matchedExcludes = [];
     $unmatchedExcludes = [];
@@ -186,12 +182,16 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
       $iteration++;
     }
 
-    // Merge in remaining excludes.
-    $excludes = array_filter($excludes, function (\DateTime $exDate) use ($limitDate): bool {
-      // Remove excludes that are out of range.
-      return $exDate <= $limitDate;
-    });
-    $unmatchedExcludes = array_merge($excludes, $unmatchedExcludes);
+    /** @var \DateTime[] $outOfLimitExcludes */
+    $outOfLimitExcludes = $excludes;
+    unset($excludes);
+
+    // Any remaining excludes are out of range. We dont know if they are matched
+    // to the rule or not. Keep them and save.
+    $form['excludes_out_of_limit'] = [
+      '#type' => 'value',
+      '#value' => $outOfLimitExcludes,
+    ];
 
     if (count($unmatchedExcludes)) {
       $form['invalid_excludes'] = [
@@ -264,6 +264,28 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
     }
 
     $form['show_more'] = [
+      '#type' => 'container',
+    ];
+    $form['show_more']['count_message'] = [
+      '#type' => 'inline_template',
+      '#template' => '<p>{{ count_message }}</p>',
+      '#context' => [
+        'count_message' => $this->formatPlural(count($outOfLimitExcludes), 'There is @count more hidden excluded occurrence.', 'There are @count more hidden excluded occurrences.'),
+      ],
+    ];
+    if (count($outOfLimitExcludes) > 0) {
+      $nextExclude = reset($outOfLimitExcludes);
+      $form['show_more']['next_message'] = [
+        '#type' => 'inline_template',
+        '#template' => '<p>{{ next_message }}</p>',
+        '#context' => [
+          'next_message' => $this->t('Next hidden excluded occurrence is at @date', [
+            '@date' => $this->dateFormatter->format($nextExclude->getTimestamp(), $dateFormatId),
+          ]),
+        ],
+      ];
+    }
+    $form['show_more']['show_more'] = [
       '#type' => 'submit',
       '#value' => $this->t('Show more'),
       '#ajax' => [
@@ -359,11 +381,17 @@ class DateRecurModularSierraModalOccurrencesForm extends FormBase {
       });
     }
 
+    // Add checked excluded dates.
     foreach ($form_state->getValue('table') as $i => $row) {
       if ($row['exclude'] !== 0) {
         $date = $form['occurrences']['table'][$i]['#date_object'];
         $rset->addExDate($date);
       }
+    }
+    // Add out of range excluded dates.
+    foreach ($form_state->getValue('excludes_out_of_limit') as $exDate) {
+      /** @var \DateTime $exDate */
+      $rset->addExDate($exDate);
     }
 
     $lines = [];
