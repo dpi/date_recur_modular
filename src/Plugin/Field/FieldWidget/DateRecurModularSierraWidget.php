@@ -165,8 +165,9 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
    */
   public static function defaultSettings(): array {
     return [
-      'interpreter' => TRUE,
+      'interpreter' => NULL,
       'date_format_type' => 'medium',
+      'occurrences_modal' => TRUE,
     ] + parent::defaultSettings();
   }
 
@@ -183,13 +184,19 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       ]) :
       $this->t('No interpreter');
 
-    $dateFormatId = $this->getSetting('date_format_type');
-    $dateFormat = $this->dateFormatStorage->load($dateFormatId);
-    $summary[] = $dateFormat
-      ? $this->t('Occurrence date format: @label', [
-        '@label' => $dateFormat->label() ?? $dateFormat->id(),
-      ])
-      : $this->t('Occurrence date format: missing date format');
+    if ($this->isOccurrencesModalEnabled()) {
+      $dateFormatId = $this->getSetting('date_format_type');
+      $dateFormat = $this->dateFormatStorage->load($dateFormatId);
+      $summary[] = $dateFormat
+        ? $this->t('Occurrence date format: @label', [
+          '@label' => $dateFormat->label() ?? $dateFormat->id(),
+        ])
+        : $this->t('Occurrence date format: missing date format');
+    }
+
+    $summary[] = $this->isOccurrencesModalEnabled()
+      ? $this->t('Occurrences button is enabled')
+      : $this->t('Occurrences button is disabled');
 
     return $summary;
   }
@@ -225,6 +232,12 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       '#description' => $this->t('Date format type to display occurrences and excluded occurrences.'),
       '#options' => $dateFormatOptions,
       '#default_value' => $this->getSetting('date_format_type'),
+    ];
+
+    $form['occurrences_modal'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Whether to enable occurrences button'),
+      '#default_value' => $this->isOccurrencesModalEnabled(),
     ];
 
     return $form;
@@ -557,6 +570,7 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       '#limit_validation_errors' => [],
       // Needs a unique name as formbuilder cant differentiate between deltas.
       '#name' => Html::cleanCssIdentifier(implode('-', array_merge($elementParents, ['occurrences']))),
+      '#access' => $this->isOccurrencesModalEnabled(),
     ];
 
     $element['time_zone'] = $this->getFieldTimeZone($timeZone);
@@ -947,6 +961,16 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       return NULL;
     }
     return $this->dateRecurInterpreterStorage->load($id);
+  }
+
+  /**
+   * Determines whether occurrences modal is enabled.
+   *
+   * @return bool
+   *   Whether occurrences modal is enabled.
+   */
+  protected function isOccurrencesModalEnabled(): bool {
+    return !empty($this->getSetting('occurrences_modal'));
   }
 
   /**
