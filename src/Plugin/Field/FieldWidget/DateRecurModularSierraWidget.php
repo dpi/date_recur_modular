@@ -412,7 +412,8 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
         if (is_string($startTimeInput)) {
           $timeObject = $this->parseTimeInput($startTimeInput);
           if ($timeObject) {
-            $startDate->setTime(...explode(':', $timeObject->format('H:i:s')));
+            $timeExploded = explode(':', $timeObject->format('H:i:s'));
+            $startDate->setTime((int) $timeExploded[0], (int) $timeExploded[1], (int) $timeExploded[2]);
           }
           else {
             $startDate->setTime(0, 0, 0);
