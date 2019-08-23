@@ -35,7 +35,7 @@ function date_recur_modular_theme(array $existing, string $type, string $theme, 
  *
  * HOOK: 'date_recur_modular_widget'.
  */
-function date_recur_modular_preprocess_date_recur_modular_alpha_widget(array &$variables): void {
+function template_preprocess_date_recur_modular_alpha_widget(array &$variables): void {
   $variables['attributes']['class'][] = 'date-recur-modular-alpha-widget';
   $variables['#attached']['library'][] = 'date_recur_modular/date_recur_modular_alpha_widget';
 }
@@ -45,7 +45,7 @@ function date_recur_modular_preprocess_date_recur_modular_alpha_widget(array &$v
  *
  * HOOK: 'date_recur_modular_oscar_widget'.
  */
-function date_recur_modular_preprocess_date_recur_modular_oscar_widget(array &$variables): void {
+function template_preprocess_date_recur_modular_oscar_widget(array &$variables): void {
   $variables['attributes']['class'][] = 'date-recur-modular-oscar-widget';
   $variables['#attached']['library'][] = 'date_recur_modular/date_recur_modular_oscar_widget';
 }
@@ -55,7 +55,7 @@ function date_recur_modular_preprocess_date_recur_modular_oscar_widget(array &$v
  *
  * HOOK: 'date_recur_modular_sierra_widget'.
  */
-function date_recur_modular_preprocess_date_recur_modular_sierra_widget(array &$variables): void {
+function template_preprocess_date_recur_modular_sierra_widget(array &$variables): void {
   $variables['attributes']['class'][] = 'date-recur-modular-sierra-widget';
   $variables['#attached']['library'][] = 'date_recur_modular/date_recur_modular_sierra_widget';
 }
@@ -65,7 +65,7 @@ function date_recur_modular_preprocess_date_recur_modular_sierra_widget(array &$
  *
  * HOOK: 'date_recur_modular_sierra_widget_modal_form'.
  */
-function date_recur_modular_preprocess_date_recur_modular_sierra_widget_modal_form(array &$variables): void {
+function template_preprocess_date_recur_modular_sierra_widget_modal_form(array &$variables): void {
   $variables['attributes']['class'][] = 'date-recur-modular-sierra-modal';
   // Wait until \Drupal\Core\Render\Element\Checkboxes::processCheckboxes is
   // run so attributes are not replicated to children.

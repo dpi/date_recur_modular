@@ -10,14 +10,17 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\OpenModalDialogCommand;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Entity\DependencyTrait;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Drupal\date_recur\DateRecurHelper;
-use Drupal\date_recur\Entity\DateRecurInterpreter;
+use Drupal\date_recur\Entity\DateRecurInterpreterInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_modular\DateRecurModularWidgetFieldsTrait;
 use Drupal\date_recur_modular\Form\DateRecurModularSierraModalForm;
@@ -41,9 +44,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
 
   use DateRecurModularWidgetFieldsTrait;
+  use DependencyTrait;
 
   // @todo settings: allow all day.
-  // @todo settings: define interpreter.
 
   /**
    * Name of a private tempstore collection.
@@ -121,7 +124,101 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
   protected $currentUser;
 
   /**
-   * Constructs a new DateRecurOpeningHoursFormatter.
+   * The date recur interpreter entity storage.
+   *
+   * @var \Drupal\Core\Entity\EntityStorageInterface
+   */
+  protected $dateRecurInterpreterStorage;
+
+  /**
+   * The language manager.
+   *
+   * @var \Drupal\Core\Language\LanguageManagerInterface
+   */
+  protected $languageManager;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function defaultSettings(): array {
+    return [
+      'interpreter' => TRUE,
+    ] + parent::defaultSettings();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function settingsSummary(): array {
+    $summary = parent::settingsSummary();
+
+    $interpreter = $this->getInterpreter();
+    $summary[] = $interpreter ?
+      $this->t('Interpreter: @label', [
+        '@label' => $interpreter->label() ?? $this->t('- Missing label -'),
+      ]) :
+      $this->t('No interpreter');
+
+    return $summary;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function settingsForm(array $form, FormStateInterface $form_state): array {
+    $form = parent::settingsForm($form, $form_state);
+
+    $interpreterOptions = array_map(function (DateRecurInterpreterInterface $interpreter): string {
+      return $interpreter->label() ?? (string) $this->t('- Missing label -');
+    }, $this->dateRecurInterpreterStorage->loadMultiple());
+    $form['interpreter'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Recurring date interpreter'),
+      '#description' => $this->t('Choose a plugin for converting rules into a human readable description.'),
+      '#default_value' => $this->getSetting('interpreter'),
+      '#options' => $interpreterOptions,
+      '#required' => FALSE,
+      '#empty_option' => $this->t('- Do not show interpreted rule -'),
+    ];
+
+    return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies(): array {
+    $this->dependencies = parent::calculateDependencies();
+    $interpreter = $this->getInterpreter();
+    if ($interpreter) {
+      $this->addDependency('config', $interpreter->getConfigDependencyName());
+    }
+    return $this->dependencies;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function onDependencyRemoval(array $dependencies): bool {
+    $changed = parent::onDependencyRemoval($dependencies);
+    $settings = $this->getSettings();
+
+    foreach ($dependencies['config'] ?? [] as $configDependency) {
+      // Delete interpreter in settings if its being deleted.
+      if ($configDependency instanceof DateRecurInterpreterInterface) {
+        if ($settings['interpreter'] === $configDependency->id()) {
+          unset($settings['interpreter']);
+          $this->setSettings($settings);
+          $changed = TRUE;
+        }
+      }
+    }
+
+    return $changed;
+  }
+
+  /**
+   * Constructs a new DateRecurModularSierraWidget.
    *
    * @param string $plugin_id
    *   The plugin_id for the formatter.
@@ -141,12 +238,18 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
    *   Provides form building and processing.
    * @param \Drupal\Core\Session\AccountInterface $currentUser
    *   The current user.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   The entity type manager.
+   * @param \Drupal\Core\Language\LanguageManagerInterface $languageManager
+   *   The language manager.
    */
-  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, ConfigFactoryInterface $configFactory, PrivateTempStoreFactory $tempStoreFactory, FormBuilderInterface $formBuilder, AccountInterface $currentUser) {
+  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, ConfigFactoryInterface $configFactory, PrivateTempStoreFactory $tempStoreFactory, FormBuilderInterface $formBuilder, AccountInterface $currentUser, EntityTypeManagerInterface $entityTypeManager, LanguageManagerInterface $languageManager) {
     parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $third_party_settings, $configFactory);
     $this->tempStoreFactory = $tempStoreFactory;
     $this->formBuilder = $formBuilder;
     $this->currentUser = $currentUser;
+    $this->dateRecurInterpreterStorage = $entityTypeManager->getStorage('date_recur_interpreter');
+    $this->languageManager = $languageManager;
   }
 
   /**
@@ -162,7 +265,9 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       $container->get('config.factory'),
       $container->get('tempstore.private'),
       $container->get('form_builder'),
-      $container->get('current_user')
+      $container->get('current_user'),
+      $container->get('entity_type.manager'),
+      $container->get('language_manager')
     );
   }
 
@@ -274,11 +379,16 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
       $helper = DateRecurHelper::create($customRrule, $startDate);
       $rules = $helper->getRules();
 
-      $interpreter = DateRecurInterpreter::load('default_interpreter');
       /** @var \Drupal\date_recur\Plugin\DateRecurInterpreterPluginInterface $plugin */
-      $plugin = $interpreter->getPlugin();
-      $language = 'en';
-      $interpretation = $plugin->interpret($rules, $language);
+      $interpreter = $this->getInterpreter();
+      if ($interpreter) {
+        $plugin = $interpreter->getPlugin();
+        $language = $this->languageManager->getCurrentLanguage()->getId();
+        $interpretation = $plugin->interpret($rules, $language);
+      }
+      else {
+        $interpretation = (string) $this->t('Custom: - Missing interpreter -');
+      }
     }
 
     $element['day_start'] = [
@@ -341,7 +451,7 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     $element['is_all_day'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('All day'),
-      '#default_value' => $this->isAllDay($item, $this->currentUser),
+      '#default_value' => $this->isAllDay($item),
     ];
 
     $element['recurrence_option'] = [
@@ -765,6 +875,20 @@ class DateRecurModularSierraWidget extends DateRecurModularWidgetBase {
     }
 
     return 'custom';
+  }
+
+  /**
+   * Load the interpreter to be used by this widget.
+   *
+   * @return \Drupal\date_recur\Entity\DateRecurInterpreterInterface|null
+   *   An interpreter instance.
+   */
+  protected function getInterpreter(): ?DateRecurInterpreterInterface {
+    $id = $this->getSetting('interpreter');
+    if (!is_string($id) || empty($id)) {
+      return NULL;
+    }
+    return $this->dateRecurInterpreterStorage->load($id);
   }
 
 }

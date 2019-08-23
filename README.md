@@ -1,6 +1,7 @@
 Recurring Date Fields Modular Widgets
 
-Provides a framework for developing widgets for Recurring Dates Field, and a few bundled widgets.
+Provides a framework for developing widgets for Recurring Dates Field, and a few
+bundled widgets.
 
 # License
 
